@@ -32,7 +32,7 @@
 	% -- opções da classe memoir --
 	12pt,				% tamanho da fonte
 	openright,			% capítulos começam em pág ímpar (insere página vazia caso preciso)
-	twoside,			% para impressão em verso e anverso. Oposto a oneside
+	oneside,			% para impressão em verso e anverso. Oposto a oneside
 	a4paper,			% tamanho do papel. 
 	% -- opções da classe abntex2 --
 	%chapter=TITLE,		% títulos de capítulos convertidos em letras maiúsculas
@@ -62,6 +62,7 @@
 \usepackage{indentfirst}		% Indenta o primeiro parágrafo de cada seção.
 \usepackage{color}				% Controle das cores
 \usepackage{graphicx}			% Inclusão de gráficos
+\usepackage{mathtools}          % Ams/fórmulas matemáticas
 % ---
 		
 % ---
@@ -151,6 +152,9 @@ as normas ABNT apresentado à comunidade de usuários \LaTeX.}
 
 % Controle do espaçamento entre um parágrafo e outro:
 \setlength{\parskip}{0.2cm}  % tente também \onelineskip
+
+%math display style
+\everymath{\displaystyle}
 
 % ---
 % compila o indice
@@ -507,14 +511,91 @@ Dentre os desafios a serem ponderados, estão a relação entre componentes harm
 % ----------------------------------------------------------
 % Capitulo 2
 % ----------------------------------------------------------
-\chapter[Revisão de Literatura]{Revisão de Literatura (Referencial Teórico + Trabalhos Relacionados)}
+\chapter[Revisão Bibliográfica]{Revisão Bibliográfica}
 %\addcontentsline{toc}{chapter}{Revisão de Literatura}
 % ----------------------------------------------------------
 
-\section{Lorem ipsum dolor sit amet}
+\section{Obtenção do Espectrograma Através de Transformadas de Fourrier}
 
+- FFT \citeonline{Roads1995}
 
-\section{Aliquam vestibulum fringilla lorem}
+Segundo \citeonline{Roads1995}, um espectrograma é uma forma de se visualizar informações sonoras no decorrer do tempo , em um gráfico de tempo e frequência, onde uma escala de cor representa a amplitude(intensidade) em cada intervalo de frequência e tempo. Atualmente, a forma mais comum de se calcular o espectrograma é utilizando a transformada de Fourier de tempo curto(STFT, Short-time Fourier Transform).
+
+Para Fourier\textsf{como citar \citeonline{Grattan-Guiness1972}?}, qualquer sinal periódico, independente da complexidade, pode ser representado como uma somatória de diversas ondas simples(em especial ondas senoidais)
+
+- MR-FFT \citeonline{HsuJ10}
+
+\section{Separação de Vocal/Melodia e Acompanhamento}
+
+\subsection{Estimativa de Tremolo/Vibrato}
+\citeonline{HsuJ10} e \citeonline{RegnierP2009} partem do princípio de que poucos instrumentos, além da voz humana, apresentam simultâneamente ambos vibrato e tremolo \cite{VerfailleGD2005}. Vibrato se refere à modulação de frequência(FM) ou a micro-variação de tom, ao passo que o tremolo refere-se à modulação de amplitude(AM) ou micro-variações na intensidade. Considerando a taxa de vibrato/tremolo em torno de 6 Hz para a voz humana, calcula-se as amplitudes(extensão) de tremolo/vibrato para cada parcial $p_k$, com duração de $t_i$ até $t_j$. Para o cálculo do vibrato, a transformada de Fourier das frequências $f_{p_k}$ é:
+\begin{equation}
+    F_{p_k}(f) = \displaystyle\sum_{t = t_i}^{t_j}(f_{p_k}(t) - \mu_{f_{p_k}}) e^{-2i\pi f\frac{t}{L}}, 
+\end{equation}
+onde $\mu_{f_{p_k}}$ é a frequência média da parcial $p_k(t)$ e $L = t_j - t_i$. Em seguida, é calculada a extensão relativa:
+\begin{equation}
+    \Delta f_{relp_k}(f) = \frac{F_{p_k}(f)}{L\mu_{f_{p_k}}}, 
+\end{equation}
+enfim, calcula-se a extensão relativa entre 6Hz:
+\begin{equation}
+    \Delta f_{p_k} = \max_{f\in [4, 8]}\Delta f_{relp_k}(f).
+\end{equation}
+
+Para o cálculo de tremolo, utiliza-se as mesmas equações para o cálculo de vibrato, mas substituindo $f_{p_k}$ por $a_{p_k}$
+
+\subsection{Harmonic Coded Structure(HCS)}
+O HCS é utilizado por \citeonline{JooPJY2011} no processo de encontrar os tons dominantes da melodia em um espectrograma. Uma vez que as amplitudes harmônicas variam com o instrumento e tom \textsf{citar fonte?}, fez-se necessário construir um codebook a partir de amostras de notas em diversos instrumentos e voz humana, agrupando-as de acordo com o algoritmo proposto em \cite{PellegM2000}.
+
+Calculam-se os HCSs para cada possível frequência fundamental(F0) seguindo as equação:
+\begin{equation}
+    h_\eta [n] = w[n] \displaystyle\sum_{m = 1}^H b_m \cos(m \cdot 2\pi \eta \cdot n + \phi_m), H = \lfloor \frac{f_s}{2\eta} \rfloor, 
+\end{equation}
+onde $f_s$ é a frequência de amostragem, $\eta$ a frequência fundamental(F0) do HCS, $w[n]$ a janela de análise, $b_m$ a amplitude da m-ésima harmônica, e $\phi_m$ a fase de $b_m$.
+
+\subsection{Estimativa de Frequências Fundamentais(F0)}
+- Estimativa de tendência de tom/F0 \citeonline{HsuJ10, CaoLLY2007, JooPJY2011}
+
+\subsection{Somatória Sub-harmônica Normalizada}
+Uma forma alternativa e complementar ao rastreamento harmônico é o método de somatória sub-harmônica, proposto por \citeonline{Hermes1988} e implementado em \citeonline{CaoLLY2007} e \citeonline{HsuCJL2009} por representar cada quadro com as estruturas harmônicas realçadas, em especial as provenientes de vocais. O algoritmo é dado por:
+\begin{equation}
+    H_t(f) = \displaystyle\sum_{n = 1}^N h_n P_t(nf), 
+\end{equation}
+onde $H_t (f)$ é o valor de somatória sub-harmônica da frequência $f$ no quadro $t$, $P()$ é o espectro calculado via STFT, $N$ a quantidade dos $n$ componentes harmônicos considerados e $h_n$ é o peso do n-ésimo componente harmônico.
+%falar da parte normalizada?
+
+\subsection{Rastreamento Harmônico}
+- Rastreamento harmônico \citeonline{CaoLLY2007}
+
+- Remoção parcial de instrumentos \citeonline{HsuJ10}
+
+- Cálculo dos ESIs \citeonline{HsuJ10, HsuCJL2009}
+
+- Extração do contorno/estrutura mais provável \citeonline{HsuJ10, CaoLLY2007, JooPJY2011}
+
+- Estrutura harmônica estável \citeonline{CaoLLY2007}
+
+- Matrizes de similaridade \citeonline{RafiiP2012, RafiiGSM2013}
+
+- Modelo de repetição(acompanhamento) \citeonline{RafiiP2012, RafiiGSM2013}
+
+- Modelos Ocultos de Markov(HMM) \citeonline{HsuCJL2009}
+
+- Modelo de voz \citeonline{RafiiGSM2013}
+    - Divergência de Kullback-Leibler \citeonline{RafiiGSM2013}
+
+- Máscara tempo-frequência \citeonline{RafiiP2012, RafiiGSM2013, DriedgerMD2014}
+
+- Fatorização de matriz não-negativa(NMF) \citeonline{RafiiGSM2013}
+
+- Filtros de Wiener \citeonline{RafiiGSM2013}
+
+- Mel-Frequency Cepstral Coefficients(MFCC) \citeonline{HsuCJL2009}
+
+- Suavização de contorno \citeonline{JooPJY2011}
+
+\section{Separação de Elementos Harmônicos e Percussivos}
+
+- Filtros de mediana \citeonline{DriedgerMD2014}
 
 % ----------------------------------------------------------
 % Capitulo 3
