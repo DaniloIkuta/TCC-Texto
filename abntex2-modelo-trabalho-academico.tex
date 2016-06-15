@@ -63,6 +63,7 @@
 \usepackage{color}				% Controle das cores
 \usepackage{graphicx}			% Inclusão de gráficos
 \usepackage{mathtools}          % Ams/fórmulas matemáticas
+\usepackage{multirow}
 % ---
 		
 % ---
@@ -102,7 +103,7 @@
 % ---
 % Informações de dados para CAPA e FOLHA DE ROSTO
 % ---
-\titulo{TCC Título}
+\titulo{Extração de Componentes de Arquivos de Música}
 \autor{Danilo Makoto Ikuta}
 \local{São Paulo -- Brasil}
 \data{2016}
@@ -113,8 +114,7 @@
 \tipotrabalho{Monografia (Graduação)}
 % O preambulo deve conter o tipo do trabalho, o objetivo, 
 % o nome da instituição e a área de concentração 
-\preambulo{Modelo canônico de trabalho monográfico acadêmico em conformidade com
-as normas ABNT apresentado à comunidade de usuários \LaTeX.}
+\preambulo{}
 % ---
 
 
@@ -500,9 +500,16 @@ Para músicos menos experientes, aprender uma música utilizando-se apenas da ha
 
 O campo de recuperação de informação musical(MIR, do inglês Music Information Retrieval) trata, dentre outros assuntos, da identificação e extração de instrumentos(fontes sonoras), melodia, percussão, acompanhamento entre outras características de uma música.
 
-Para a análise de áudio, costuma-se usar o espectrograma, que representa o som através de um gráfico frequência X tempo, onde cada coordenada possui uma certa intensidade (amplitude).
+Para a análise de áudio, costuma-se usar o espectrograma(figura \ref{fig:Espectrograma_Exemplo}), que representa o som através de um gráfico frequência X tempo, onde cada coordenada possui uma certa intensidade (amplitude).
 
-Com a finalidade de auxiliar músicos menos experientes, a geração de arquivos de áudio derivados da análise e extração de componentes de uma música, como um instrumento específico, vozes, percussão, melodia e acompanhamento é descrito.
+\begin{figure}[!ht]
+    \centering
+    \label{fig:Espectrograma_Exemplo}
+    \caption{Exemplo de espectrograma. Fonte: \url{http://www.ee.columbia.edu/~csmit/ELEN_E6820/images/assignment_1/specgrams.jpg}}
+    \includegraphics[width=0.55\textwidth]{Imgs/Espectrograma_Exemplo.jpg}
+\end{figure}
+
+Com a finalidade de auxiliar músicos menos experientes, o desenvolvimento de uma aplicação capaz de gerar arquivos de áudio derivados da análise e extração de componentes de uma música, como um instrumento específico, vozes, percussão, melodia e acompanhamento é descrito.
 
 Serão comparadas técnicas tanto voltadas à instrumentos e características específicos quanto métodos com foco na abrangência de instrumentos e características.
 
@@ -515,18 +522,83 @@ Dentre os desafios a serem ponderados, estão a relação entre componentes harm
 %\addcontentsline{toc}{chapter}{Revisão de Literatura}
 % ----------------------------------------------------------
 
-\section{Obtenção do Espectrograma Através de Transformadas de Fourrier}
+As técnicas descritas neste capítulo podem ser divididas nas seguintes categorias:
+\begin{table}[]
+    \centering
+    \begin{tabular}{|c|c|}
+        \hline
+        Categoria & Técnicas \\
+        \hline
+        \multirow{2}{150pt}{Obtenção do espectrograma}
+            & STFT\\
+            & MR-FFT \\
+        \hline
+        \multirow{3}{150pt}{Pré-processamento}
+            & Somatória Sub-harmônica \\
+            & MFCC \\
+            & NMF \\
+        \hline
+        \multirow{6}{150pt}{Obtenção de Informações do Espectrograma e Outras Fontes}
+            & Estimativa de Tremolo/Vibrato \\
+            & HCS \\
+            & Estimativa de F0 \\
+            & Cálculo de ESIs \\
+            & Matrizes de Similaridade \\
+            & Modelo Universal de Voz \\
+        \hline
+        \multirow{4}{150pt}{Refinamento das Informações Obtidas}
+            & Rastramento Harmônico \\
+            & Extração de Contorno Mais Provável \\
+            & HMM \\
+            & Geração de Máscara Tempo-frequência \\
+        \hline
+        \multirow{1}{150pt}{Pós-processamento}
+            & Suavização de Contorno \\
+        \hline
+    \end{tabular}
+    \caption{Relação de categorias e técnicas}
+    \label{tab:Cat_Tecnicas}
+\end{table}
 
-- FFT \citeonline{Roads1995}
 
+%%%%%%%%%%Obtenção do Espectrograma%%%%%%%%%%
+\section{Obtenção do Espectrograma}
+\subsection{STFT(Short-time Fourier Transform)}
 Segundo \citeonline{Roads1995}, um espectrograma é uma forma de se visualizar informações sonoras no decorrer do tempo , em um gráfico de tempo e frequência, onde uma escala de cor representa a amplitude(intensidade) em cada intervalo de frequência e tempo. Atualmente, a forma mais comum de se calcular o espectrograma é utilizando a transformada de Fourier de tempo curto(STFT, Short-time Fourier Transform).
 
-Para Fourier\textsf{como citar \citeonline{Grattan-Guiness1972}?}, qualquer sinal periódico, independente da complexidade, pode ser representado como uma somatória de diversas ondas simples(em especial ondas senoidais)
+Para Fourier(\citeonline{Grattan-Guiness1972}), qualquer sinal periódico, independente da complexidade, pode ser representado como uma somatória de diversas ondas simples(em especial ondas senoidais), variando em frequência, amplitude e fase. Para a análise de sinais digitais de áudio, a STFT(shourtt-time Fourier transform) é utilizada.
 
-- MR-FFT \citeonline{HsuJ10}
+A STFT consiste na separação do sinal de entrada em janelas(sogmentos) de tempo, geralmente sobrepostos e análise individual de cada janela. Para um sinal de entrada $x[m]$ com duração $M$, a saída $X[l, k]$ é a transformada de Fourier em cada quadro $l$ e cada intervalo de frequência $k$. Segue-se a equação:
+\begin{equation}
+    X[l, k] = \displaystyle\sum_{m = 0}^{M-1}h[m]x[m + lH]e^{-j(2\pi/N)km}, 
+\end{equation}
+onde $h[m]$ é a janela de seleção da entrada $x[m]$, $l$ é o índice do quadro e $H$ o avanço de tempo em amostras.As frequências de cada índice $k$ são dadas pela relação
+\begin{equation}
+    f_k = (k/N) \times f_s, 
+\end{equation}
+onde $f_s$ corresponde à frequência de amostragem e $N$ ao comprimento da janela em amostras.
 
-\section{Separação de Vocal/Melodia e Acompanhamento}
+\subsection{MR-FFT(Multi-resolution Fourier Transform)}
+Proposto por \citeonline{Dressler2006} e utilizado em \citeonline{HsuJ10}, tem como foco o uso de múltiplas resoluções dependendo da faixa de resolução analisada.%CONTINUAR?
 
+%%%%%%%%%%Pré-processamento%%%%%%%%%%
+\section{Pré-processamento}
+\subsection{Somatória Sub-harmônica}
+O método de somatória sub-harmônica, proposto por \citeonline{Hermes1988} e implementado em \citeonline{CaoLLY2007} e \citeonline{HsuCJL2009} representa cada quadro com as estruturas harmônicas realçadas, em especial as provenientes de vocais. O algoritmo é dado por:
+\begin{equation}
+    H_t(f) = \displaystyle\sum_{n = 1}^N h_n P_t(nf), 
+\end{equation}
+onde $H_t (f)$ é o valor de somatória sub-harmônica da frequência $f$ no quadro $t$, $P()$ é o espectro calculado via STFT, $N$ a quantidade dos $n$ componentes harmônicos considerados e $h_n$ é o peso do n-ésimo componente harmônico.
+%falar da parte normalizada?
+
+\subsection{MFCC(Mel-Frequency Cepstral Coefficients)}
+\citeonline{HsuCJL2009}
+
+\subsection{NMF(Fatorização de Matriz Não-negativa)}
+\citeonline{RafiiGSM2013}
+
+%%%%%%%%%%Obtenção de Informações do Espectrograma%%%%%%%%%%
+\section{Obtenção de Informações do Espectrograma e Outras Fontes}
 \subsection{Estimativa de Tremolo/Vibrato}
 \citeonline{HsuJ10} e \citeonline{RegnierP2009} partem do princípio de que poucos instrumentos, além da voz humana, apresentam simultâneamente ambos vibrato e tremolo \cite{VerfailleGD2005}. Vibrato se refere à modulação de frequência(FM) ou a micro-variação de tom, ao passo que o tremolo refere-se à modulação de amplitude(AM) ou micro-variações na intensidade. Considerando a taxa de vibrato/tremolo em torno de 6 Hz para a voz humana, calcula-se as amplitudes(extensão) de tremolo/vibrato para cada parcial $p_k$, com duração de $t_i$ até $t_j$. Para o cálculo do vibrato, a transformada de Fourier das frequências $f_{p_k}$ é:
 \begin{equation}
@@ -543,7 +615,7 @@ enfim, calcula-se a extensão relativa entre 6Hz:
 
 Para o cálculo de tremolo, utiliza-se as mesmas equações para o cálculo de vibrato, mas substituindo $f_{p_k}$ por $a_{p_k}$
 
-\subsection{Harmonic Coded Structure(HCS)}
+\subsection{HCS(Harmonic Coded Structure)}
 O HCS é utilizado por \citeonline{JooPJY2011} no processo de encontrar os tons dominantes da melodia em um espectrograma. Uma vez que as amplitudes harmônicas variam com o instrumento e tom \textsf{citar fonte?}, fez-se necessário construir um codebook a partir de amostras de notas em diversos instrumentos e voz humana, agrupando-as de acordo com o algoritmo proposto em \cite{PellegM2000}.
 
 Calculam-se os HCSs para cada possível frequência fundamental(F0) seguindo as equação:
@@ -553,68 +625,58 @@ Calculam-se os HCSs para cada possível frequência fundamental(F0) seguindo as 
 onde $f_s$ é a frequência de amostragem, $\eta$ a frequência fundamental(F0) do HCS, $w[n]$ a janela de análise, $b_m$ a amplitude da m-ésima harmônica, e $\phi_m$ a fase de $b_m$.
 
 \subsection{Estimativa de Frequências Fundamentais(F0)}
-- Estimativa de tendência de tom/F0 \citeonline{HsuJ10, CaoLLY2007, JooPJY2011}
 
-\subsection{Somatória Sub-harmônica Normalizada}
-Uma forma alternativa e complementar ao rastreamento harmônico é o método de somatória sub-harmônica, proposto por \citeonline{Hermes1988} e implementado em \citeonline{CaoLLY2007} e \citeonline{HsuCJL2009} por representar cada quadro com as estruturas harmônicas realçadas, em especial as provenientes de vocais. O algoritmo é dado por:
-\begin{equation}
-    H_t(f) = \displaystyle\sum_{n = 1}^N h_n P_t(nf), 
-\end{equation}
-onde $H_t (f)$ é o valor de somatória sub-harmônica da frequência $f$ no quadro $t$, $P()$ é o espectro calculado via STFT, $N$ a quantidade dos $n$ componentes harmônicos considerados e $h_n$ é o peso do n-ésimo componente harmônico.
-%falar da parte normalizada?
+\subsection{Cálculo de ESIs}
+\citeonline{HsuCJL2009, HsuJ10}
 
+\subsection{Matrizes de Similaridade}
+\citeonline{RafiiP2012}
+
+\subsection{Modelo Universal de Voz}
+\citeonline{RafiiGSM2013}
+
+%%%%%%%%%%Refinamento das Informações Obtidas%%%%%%%%%%
+\section{Refinamento das Informações Obtidas}
 \subsection{Rastreamento Harmônico}
-- Rastreamento harmônico \citeonline{CaoLLY2007}
+\citeonline{CaoLLY2007}
+\textsf{(inclui estrutura harmônica estável)}
 
-- Remoção parcial de instrumentos \citeonline{HsuJ10}
+\subsection{Extração do contorno/estrutura mais provável}
+\citeonline{HsuJ10, CaoLLY2007, JooPJY2011}
 
-- Cálculo dos ESIs \citeonline{HsuJ10, HsuCJL2009}
+\subsection{HMM(Modelos Ocultos de Markov)}
+\citeonline{HsuCJL2009}
 
-- Extração do contorno/estrutura mais provável \citeonline{HsuJ10, CaoLLY2007, JooPJY2011}
+\subsection{Geração de Máscara Tempo-frequência}
+\citeonline{RafiiP2012, DriedgerMD2014}
 
-- Estrutura harmônica estável \citeonline{CaoLLY2007}
-
-- Matrizes de similaridade \citeonline{RafiiP2012, RafiiGSM2013}
-
-- Modelo de repetição(acompanhamento) \citeonline{RafiiP2012, RafiiGSM2013}
-
-- Modelos Ocultos de Markov(HMM) \citeonline{HsuCJL2009}
-
-- Modelo de voz \citeonline{RafiiGSM2013}
-    - Divergência de Kullback-Leibler \citeonline{RafiiGSM2013}
-
-- Máscara tempo-frequência \citeonline{RafiiP2012, RafiiGSM2013, DriedgerMD2014}
-
-- Fatorização de matriz não-negativa(NMF) \citeonline{RafiiGSM2013}
-
-- Filtros de Wiener \citeonline{RafiiGSM2013}
-
-- Mel-Frequency Cepstral Coefficients(MFCC) \citeonline{HsuCJL2009}
-
-- Suavização de contorno \citeonline{JooPJY2011}
-
-\section{Separação de Elementos Harmônicos e Percussivos}
-
-- Filtros de mediana \citeonline{DriedgerMD2014}
+%%%%%%%%%%Pós-processamento%%%%%%%%%%
+\section{Pós-processamento}
+\subsection{Suavização de Contorno}
+\citeonline{JooPJY2011}
 
 % ----------------------------------------------------------
 % Capitulo 3
 % ----------------------------------------------------------
-\chapter[Proposta do Trabalho]{Proposta do Trabalho (O que vai ser desenvolvido!)}
+\chapter[Metodologia]{Metodologia}
 %\addcontentsline{toc}{chapter}{Metodologia}
 % ----------------------------------------------------------
 
-\section{Lectus lobortis condimentum}
+\section{Análise e Escolha das Técnicas e Combinações}
+Citar e jsutificar as técnicas e quais combinações serão implementadas para teste.
 
-\section{Vestibulum ante ipsum primis in faucibus orci luctus et ultrices
-posuere cubilia Curae}
+\section{Desenvolvimento}
+Mostrar o desenvolvimento da aplicação e técnicas utilizadas.
+
+%Medidas de Desempenho e Formato dos Testes, Resultados dos testes e possíveis melhorias no capítulo de resultados!
 
 % ----------------------------------------------------------
 % Capitulo 4
 % ----------------------------------------------------------
-\chapter[Expectativas]{Expectativas}
+\chapter[Próximos Passos]{Próximos Passos}
+%\chapter[Expectativas]{Expectativas}
 %\addcontentsline{toc}{chapter}{Expectativas}
-% ---
+Como próximos passos estão a pesquisa de mais alguns artigos, com vista na verificação de outras técnicas e relevância das técnicas obtidas. Além disso, deve-se estabelecer as medidas de desempenho para os testes, implementar e analisar diferentes combinações de técnicas e apontar possíveis melhorias.
 
 % ----------------------------------------------------------
 % PARTE - preparação da pesquisa
